@@ -32,45 +32,46 @@ const init = (context) => {
       return;
     }
 
-    if (!fs.existsSync(path.resolve(__dirname + '/backup.json'))) {
-      api.showErrorNotification(`Backup file does not exist: ${path.resolve(__dirname + '/backup.json')}`)
-      return;
-    }
+    api.selectFile({ create: false, title: 'Select your backup file to import'})
+      .then(fileName => {
+        fs.readFile(path.resolve(fileName), (error, jsonString) => {
+          const activeGameId = getActiveGameId(state);
 
-    fs.readFile(path.resolve(__dirname + '/backup.json'), (error, jsonString) => {
-      const activeGameId = getActiveGameId(state);
+          if (error) {
+            api.showErrorNotification(error);
+            return;
+          }
 
-      if (error) {
-        api.showErrorNotification(error);
-        return;
-      }
+          const installedMods = getInstalledMods(state);
+          let mods = JSON.parse(jsonString);
+          mods = mods.filter(mod => mod.game === activeGameId)
+            .filter(mod => !installedMods.some(installedMod => installedMod.game === mod.game && installedMod.modId === mod.modId && installedMod.fileId === mod.fileId))
+          ;
 
-      const installedMods = getInstalledMods(state);
-      let mods = JSON.parse(jsonString);
-      mods = mods.filter(mod => mod.game === activeGameId)
-        .filter(mod => !installedMods.some(installedMod => installedMod.game === mod.game && installedMod.modId === mod.modId && installedMod.fileId === mod.fileId))
-      ;
+          for (const mod of mods) {
+            api.events.emit('mod-update', mod.game, mod.modId, mod.fileId);
+          }
 
-      for (const mod of mods) {
-        api.events.emit('mod-update', mod.game, mod.modId, mod.fileId);
-      }
-
-      api.showErrorNotification(`${mods.length} mods for ${activeGameId} restored`);
-    });
+          api.showErrorNotification(`${mods.length} mods for ${activeGameId} restored`);
+        });
+      });
   });
 
   context.registerAction('mod-icons', 999, 'show', {}, 'Modlist Backup', () => {
     const state = api.store.getState();
     const mods = getInstalledMods(state);
 
-    fs.writeFile(path.resolve(__dirname + '/backup.json'), JSON.stringify(mods, null, 4), error => {
-      if (error) {
-        api.showErrorNotification(error);
-        return;
-      }
+    api.selectFile({ create: true, title: 'Select file to export to'})
+      .then(fileName => {
+        fs.writeFile(path.resolve(fileName), JSON.stringify(mods, null, 4), error => {
+          if (error) {
+            api.showErrorNotification(error);
+            return;
+          }
 
-      api.showErrorNotification(`Modlist backed up to ${path.resolve(__dirname + '/backup.json')}`);
-    });
+          api.showErrorNotification(`Modlist backed up to ${path.resolve(fileName)}`);
+        });
+      });
   });
 };
 
