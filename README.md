@@ -1,5 +1,11 @@
 ## Vortex Modlist Backup
 
+#### Installation
+ * Download the latest zip from the `Releases` tab here
+ * Open the `Extensions` page in Vortex
+ * Drag and drop the zip file into the bottom pane of that page
+ * Restart Vortex
+
 #### What does this do?
 This is a **very simple** extension that takes the list of mods that Vortex currently has and writes them to a file.
 It then allows you to take that file and Restore your list of mods, making Vortex download them again as if you'd 
