@@ -1,5 +1,10 @@
 ## Changelog
 
+#### Version 0.3.0
+ * Added the ability to backup the mods for just one game
+ * Filtered out the backup output to remove mods that have no modId or fileId
+ * Added support for a newer version of Vortex
+
 #### Version 0.2.0
  * Moved to Typescript
  * Changed error popups to success notifications
