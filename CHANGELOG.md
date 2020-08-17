@@ -1,5 +1,8 @@
 ## Changelog
 
+#### Version 0.3.1
+ * Cancelling the file selector for creating or restoring backups no longer causes an error (#3)
+
 #### Version 0.3.0
  * Added the ability to backup the mods for just one game
  * Filtered out the backup output to remove mods that have no modId or fileId

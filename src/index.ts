@@ -93,7 +93,8 @@ const init = (context: IExtensionContext) => {
                         message: `Modlist backed up to ${path.resolve(fileName)}`,
                     })
                 });
-            });
+            })
+            .catch(() => null);
     };
 
     const restoreMods = () => {
@@ -157,7 +158,8 @@ const init = (context: IExtensionContext) => {
                         message: `${modsFound} mods found for ${activeGameId}, but only ${mods.length} mods installed`
                     });
                 });
-            });
+            })
+            .catch(() => null);
     };
 
     // Register our option to restore backups. We use `999` as our position to put this at the end of the menu list.
