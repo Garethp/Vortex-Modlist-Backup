@@ -1,4 +1,4 @@
-## Vortex Modlist Backup
+## [Vortex Modlist Backup](https://www.nexusmods.com/site/mods/67)
 
 #### Installation
  * Download the latest zip from the `Releases` tab here
