@@ -70,14 +70,18 @@ const init = (context: IExtensionContext) => {
 
                 // If we're overwriting an existing mod list, we only want to overwrite the mods for the game we're currently managing.
                 // We don't want to remove mods from the backup for games that aren't installed
-                if (fs.existsSync(fileName)) {
-                    // Get mods from the backup that aren't from the active game
-                    const existingMods = JSON.parse(fs.readFileSync(fileName)).filter((mod: Mod) => mod.game !== activeGameId);
+                if (fs.existsSync(fileName) && fs.readFileSync(fileName).length > 2) {
+                    try {
+                        // Get mods from the backup that aren't from the active game
+                        const existingMods = JSON.parse(fs.readFileSync(fileName)).filter((mod: Mod) => mod.game !== activeGameId);
 
-                    mods = mods
-                        // Only get mods from the currently managed game, then merge them with the existing list
-                        .filter((mod: Mod) => mod.game === activeGameId)
-                        .concat(existingMods)
+                        mods = mods
+                            // Only get mods from the currently managed game, then merge them with the existing list
+                            .filter((mod: Mod) => mod.game === activeGameId)
+                            .concat(existingMods)
+                    } catch (error) {
+                        console.log(error);
+                    }
                 }
 
                 // Write the file in pretty-print JSON for user readability
@@ -94,7 +98,7 @@ const init = (context: IExtensionContext) => {
                     })
                 });
             })
-            .catch(() => null);
+            .catch((error) => console.log(error));
     };
 
     const restoreMods = () => {
@@ -159,7 +163,7 @@ const init = (context: IExtensionContext) => {
                     });
                 });
             })
-            .catch(() => null);
+            .catch((error) => console.log(error));
     };
 
     // Register our option to restore backups. We use `999` as our position to put this at the end of the menu list.
