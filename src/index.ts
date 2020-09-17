@@ -54,7 +54,7 @@ const init = (context: IExtensionContext) => {
         let mods = getInstalledMods(state);
 
         // Ask the user where they want to export to
-        api.selectFile({create: true, title: 'Select file to export to'})
+        api.selectFile({create: true, title: 'Select file to export to', filters: [{name:"Modlist (*.json)",extensions:["*.json"]},{name:"All files (*.*)",extensions:["*.*"]}]})
             .then(fileName => {
                 const activeGameId = getActiveGameId(state);
 
@@ -113,7 +113,7 @@ const init = (context: IExtensionContext) => {
         }
 
         // Ask the user to select their file
-        api.selectFile({create: false, title: 'Select your backup file to import'})
+        api.selectFile({create: false, title: 'Select your backup file to import', filters: [{name:"Modlist (*.json)",extensions:["*.json"]},{name:"All files (*.*)",extensions:["*.*"]}]})
             .then(fileName => {
                 fs.readFile(path.resolve(fileName), (error, jsonString) => {
                     // We don't want to restore for other games that might be in the modlist but aren't actively being managed
