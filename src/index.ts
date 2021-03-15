@@ -103,6 +103,10 @@ const init = (context: IExtensionContext) => {
 
     const restoreMods = () => {
         const state: IState = api.store.getState();
+        let shouldInstall = state.settings.automation.install;
+        const doInstall = "Yes, download and install";
+        const dontInstall = "No, download only";
+
 
         // Installed mods with the `mod-update` event requires the user to be a Premium Member internally in Vortex, I think that's because
         // this method won't show any ads. Because of this restriction, we're going to run a check now rather than later, to give earlier feedback
@@ -115,7 +119,7 @@ const init = (context: IExtensionContext) => {
         // Ask the user to select their file
         api.selectFile({create: false, title: 'Select your backup file to import'})
             .then(fileName => {
-                fs.readFile(path.resolve(fileName), (error, jsonString) => {
+                fs.readFile(path.resolve(fileName), async (error, jsonString) => {
                     // We don't want to restore for other games that might be in the modlist but aren't actively being managed
                     const activeGameId = getActiveGameId(state);
 
@@ -123,6 +127,17 @@ const init = (context: IExtensionContext) => {
                         api.showErrorNotification(error, error);
                         return;
                     }
+
+                    shouldInstall = state.settings.automation.install || await api.showDialog("question", "Automatically install?", {
+                        text: "In your settings, you've disabled automatic installation on download. Would you like to install these mods when they download anyway?"
+                    }, [
+                        {
+                            label: dontInstall,
+                        },
+                        {
+                            label: doInstall
+                        }
+                    ]).then(result => result?.action === doInstall)
 
                     let mods = JSON.parse(jsonString) as Mod[];
 
@@ -153,7 +168,11 @@ const init = (context: IExtensionContext) => {
 
                     // `mod-update` is the Vortex internal event that's used for mod updates. Happily, it'll also download and install mods that aren't installed for us
                     for (const mod of mods) {
-                        api.events.emit('mod-update', mod.game, mod.modId, mod.fileId, mod.source);
+                        if (shouldInstall) {
+                            api.events.emit('mod-update', mod.game, mod.modId, mod.fileId, mod.source);
+                        } else {
+                            api.emitAndAwait('nexus-download', mod.game, mod.modId, mod.fileId);
+                        }
                     }
 
                     api.sendNotification({

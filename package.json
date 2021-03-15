@@ -1,12 +1,12 @@
 {
   "name": "modlist-backup",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "An extension to backup and restore mods",
   "main": "./dist/index.js",
   "repository": "",
   "scripts": {
     "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --display-error-details --progress --profile --color",
-    "bundle7z": "7z a -t7z modlist-backup.7z .\\dist\\index.js .\\dist\\info.json",
+    "bundle7z": "7z a -t7z modlist-backup.7z ./dist/index.js ./dist/info.json",
     "build": "npm run webpack && extractInfo",
     "bundle": "npm run build && npm run bundle7z"
   },

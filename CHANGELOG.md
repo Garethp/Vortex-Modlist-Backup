@@ -1,5 +1,8 @@
 ## Changelog
 
+#### Version 0.3.2
+ * Ask the user if they want to install the mods when they have auto-install disabled in the settings
+
 #### Version 0.3.1
  * Cancelling the file selector for creating or restoring backups no longer causes an error (#3)
  * Trying to save to an already existing blank text file will no longer cause an error (#5)
