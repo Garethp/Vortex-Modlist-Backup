@@ -1,6 +1,6 @@
 {
   "name": "modlist-backup",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "An extension to backup and restore mods",
   "main": "./dist/index.js",
   "repository": "",
@@ -25,6 +25,7 @@
     "bluebird": "^3.5.5",
     "electron": "4.2.4",
     "i18next": "^17.0.4",
+    "prettier": "^3.1.1",
     "react": "^16.8.6",
     "react-bootstrap": "^0.32.4",
     "ts-loader": "^6.0.4",
