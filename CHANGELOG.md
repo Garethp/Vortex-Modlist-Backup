@@ -1,5 +1,10 @@
 ## Changelog
 
+#### Version 0.4.0
+ * There's a new option to only backup mods enabled in the current profile
+ * Backup files created from now on will contain information on whether or not the mod was enabled in the current active profile
+ * If you restore a mod from a backup made from this version onwards, it won't enable mods that were disabled when backed up
+
 #### Version 0.3.2
  * Ask the user if they want to install the mods when they have auto-install disabled in the settings
 
