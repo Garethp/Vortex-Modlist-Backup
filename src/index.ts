@@ -180,34 +180,44 @@ interface LoadOrderEntry {
   enabled: boolean;
   id: string;
   name: string;
+  locked?: boolean;
 }
 
 // The Plugins page's load order for the active profile, in load order. Vortex's plugin management keeps it in
 // state.loadOrder, keyed by lower case plugin name: { name, enabled, loadOrder }. That can still list plugins that
-// are no longer installed, so when Vortex has a list of the plugins it found, keep only those (like plugins.txt)
+// are no longer installed, so when Vortex has a list of the plugins it found, keep only those (like plugins.txt).
+// The game always loads its own plugins (base game, DLC, Creations in the .ccc file) and Vortex leaves them out of
+// plugins.txt and marks them not enabled, so save them as enabled and locked, like the Load Order page does
 const classicLoadOrder = (state: IState): LoadOrderEntry[] => {
   const loadOrder: Record<
     string,
     { name?: string; enabled?: boolean; loadOrder?: number }
   > = getSafe(state, ["loadOrder"], {});
-  const installed: Record<string, unknown> = getSafe(
+  const installed: Record<string, { isNative?: boolean }> = getSafe(
     state,
     ["session", "plugins", "pluginList"],
     {},
   );
-  const installedIds = new Set(
-    Object.keys(installed).map((id) => id.toLowerCase()),
-  );
+  const native = new Set<string>();
+  const installedIds = new Set<string>();
+  Object.keys(installed).forEach((id) => {
+    installedIds.add(id.toLowerCase());
+    if (installed[id]?.isNative === true) native.add(id.toLowerCase());
+  });
 
   return Object.keys(loadOrder)
     .filter((id) => installedIds.size === 0 || installedIds.has(id))
     .map((id) => ({ id, entry: loadOrder[id] }))
     .sort((a, b) => (a.entry.loadOrder ?? -1) - (b.entry.loadOrder ?? -1))
-    .map(({ id, entry }) => ({
-      enabled: entry.enabled === true,
-      id,
-      name: entry.name ?? id,
-    }));
+    .map(({ id, entry }): LoadOrderEntry => {
+      const isNative = native.has(id);
+      return {
+        enabled: isNative || entry.enabled === true,
+        id,
+        name: entry.name ?? id,
+        ...(isNative ? { locked: true } : {}),
+      };
+    });
 };
 
 // The load order backup goes next to the modlist backup, with "modlist" swapped for "loadorder" in the name:
