@@ -54,7 +54,12 @@ No, only the list of mods and, for a profile, its load order.
 
 #### Does it back up the mod files
 No, this only stores list of mods. When you Restore the list, Vortex will download every mod on the list. Mods that
-didn't come from the Nexus, like ones you installed from a file, aren't in the backup.
+didn't come from the Nexus, like ones you installed from a file, are listed in the backup with `"source": "local"` so
+the backup matches your Mods page, but Restore skips them because there's nothing to download. Keep those files
+yourself.
+
+Each mod in the backup also lists its plugin files (`.esm`, `.esp`, `.esl`) under `plugins`, so you can tell which mod
+a plugin came from. Mods with no plugins, like SFSE or DLL mods, have an empty list.
 
 #### Are there any requirements
 You need to be a premium member on the Nexus site to Restore the list, since the Vortex client won't let you 

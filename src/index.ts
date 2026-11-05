@@ -24,7 +24,46 @@ export interface Mod {
   // when a game accepts mods from another game, like Skyrim Special Edition accepting Skyrim mods. We still need
   // `game` to download the mod again. Older backups don't have this
   installedGame?: string;
+  // The plugin files (.esm, .esp, .esl) in the mod's own folder, so other tools can tell which mod a plugin came
+  // from, and which mods (like SFSE or DLL mods) have none. Older backups don't have this, and it's left out when
+  // the mod's folder can't be read
+  plugins?: string[];
 }
+
+// Mods installed from a file on disk rather than downloaded have no modId or fileId, so they can't be downloaded
+// again. They're still backed up with this source so the backup lists every mod, but restoring skips them
+const LOCAL_SOURCE = "local";
+
+const PLUGIN_EXTENSIONS = [".esm", ".esp", ".esl"];
+
+// List the plugin files in a mod's folder. Plugins sit at the top of the folder for games whose mods go into the
+// Data folder, or in a Data folder inside it for games whose mods go into the game's own folder
+const modPlugins = (modPath: string): string[] => {
+  const plugins: string[] = [];
+  const readDir = (dir: string): string[] => {
+    try {
+      return fs.readdirSync(dir);
+    } catch (error) {
+      return undefined;
+    }
+  };
+
+  const top = readDir(modPath);
+  if (top === undefined) return undefined;
+
+  const isPlugin = (file: string) =>
+    PLUGIN_EXTENSIONS.includes(path.extname(file).toLowerCase());
+
+  plugins.push(...top.filter(isPlugin));
+  const dataDir = top.find((file) => file.toLowerCase() === "data");
+  if (dataDir !== undefined) {
+    plugins.push(
+      ...(readDir(path.join(modPath, dataDir)) || []).filter(isPlugin),
+    );
+  }
+
+  return plugins.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+};
 
 // The game a mod from a backup belongs to, falling back to the game it was downloaded for in older backups
 const modGame = (mod: Mod): string => mod.installedGame ?? mod.game;
@@ -80,23 +119,50 @@ const profileForGame = (state: IState, gameId: string): Profile => {
 
 // Transform the format of the mod from what's used internally in Vortex into what we want to store in the file
 // If we don't know the enabled state for the mod's game, leave it undefined so that restoring won't change it
+// When stagingPath is given, the mod's plugin files are listed too
 const transformModFormat = (
   mod: IMod,
   gameId: string,
   profile: Profile,
-): Mod => ({
-  name: mod.attributes.modName,
-  game: mod.attributes.downloadGame,
-  modId: mod.attributes.modId,
-  fileId: mod.attributes.fileId,
-  source: mod.attributes.source,
-  enabled:
-    profile !== undefined && profile.modState !== undefined
-      ? profile.modState[mod.id]?.enabled === true
-      : undefined,
-  vortexId: mod.id,
-  installedGame: gameId,
-});
+  stagingPath?: string,
+): Mod => {
+  const attributes = mod.attributes || {};
+  const downloadable = !!(attributes.modId && attributes.fileId);
+  const result: Mod = {
+    // Mods installed from a file often have no modName, so fall back to the name Vortex shows
+    name:
+      attributes.modName ??
+      attributes.name ??
+      attributes.logicalFileName ??
+      mod.id,
+    game: attributes.downloadGame ?? (downloadable ? undefined : gameId),
+    modId: attributes.modId,
+    fileId: attributes.fileId,
+    source: downloadable ? attributes.source : LOCAL_SOURCE,
+    enabled:
+      profile !== undefined && profile.modState !== undefined
+        ? profile.modState[mod.id]?.enabled === true
+        : undefined,
+    vortexId: mod.id,
+    installedGame: gameId,
+  };
+
+  if (stagingPath !== undefined && mod.installationPath) {
+    const plugins = modPlugins(path.join(stagingPath, mod.installationPath));
+    if (plugins !== undefined) result.plugins = plugins;
+  }
+
+  return result;
+};
+
+// The staging folder Vortex installs a game's mods into, or undefined if it can't be found
+const stagingPathForGame = (state: IState, gameId: string): string => {
+  try {
+    return (selectors as any).installPathForGame(state, gameId);
+  } catch (error) {
+    return undefined;
+  }
+};
 
 /*
  * The installed mods will come back in an object format for games, where as we want an array, so do the following:
@@ -104,12 +170,15 @@ const transformModFormat = (
  *    Transform them into the structure we want, using that game's profile for the enabled state
  *    We now have data in structure Mod[][], so let's concat all the array's into one array
  */
-const getInstalledMods = (state: IState): Mod[] =>
+const getInstalledMods = (state: IState, withPlugins = false): Mod[] =>
   Object.entries(state.persistent.mods)
     .map(([gameId, game]) => {
       const profile = profileForGame(state, gameId);
+      const stagingPath = withPlugins
+        ? stagingPathForGame(state, gameId)
+        : undefined;
       return Object.values(game).map((mod) =>
-        transformModFormat(mod, gameId, profile),
+        transformModFormat(mod, gameId, profile, stagingPath),
       );
     })
     .reduce((result, current) => result.concat(current), []);
@@ -141,7 +210,8 @@ const defaultBackupFileName = (
   if (thisGameOnly) {
     const profile = activeProfile(state);
     scope = fileNamePart(profile.gameId);
-    if (thisProfileOnly) scope += `-${fileNamePart(profile.name ?? profile.id)}`;
+    if (thisProfileOnly)
+      scope += `-${fileNamePart(profile.name ?? profile.id)}`;
   }
   return `vortex-${scope}-modlist-backup-${fileNameTimestamp()}.json`;
 };
@@ -345,7 +415,9 @@ const init = (context: IExtensionContext) => {
         api.sendNotification({
           type: "success",
           title: "Backup Complete",
-          message: `Modlist backed up to ${backupPath} and load order (${loadOrder.length} plugins, from the ${
+          message: `Modlist backed up to ${backupPath} and load order (${
+            loadOrder.length
+          } plugins, from the ${
             source === "classic" ? "Plugins page" : "Load Order page"
           }) backed up to ${loadOrderPath}`,
         });
@@ -370,7 +442,7 @@ const init = (context: IExtensionContext) => {
         return;
       }
 
-      let mods = getInstalledMods(state);
+      let mods = getInstalledMods(state, true);
 
       // Ask the user where they want to export to. The save dialog asks the user before replacing an existing file.
       // Older versions of Vortex (and the vortex-api types we build against) don't have saveFile, so fall back to
@@ -397,9 +469,9 @@ const init = (context: IExtensionContext) => {
           if (!fileName) return;
 
           mods = mods
-            // Some mods don't have modId's or fileId's. Maybe they were manually installed? Since we need a modId
-            // and a fileId, there's no point int writing out mods that have neither
-            .filter((mod) => mod.modId && mod.fileId && mod.game);
+            // Mods installed from a file on disk have no modId or fileId. They're kept with the "local" source so
+            // the backup lists every mod, and restoring skips them. A downloaded mod still needs its game
+            .filter((mod) => mod.source === LOCAL_SOURCE || mod.game);
 
           // If we're only backing up the existing games, let's filter out other ones
           if (thisGameOnly) {
@@ -530,10 +602,14 @@ const init = (context: IExtensionContext) => {
             }
 
             return mod;
-          })
-          .filter((mod) =>
-            integrations.some(({ source }) => mod.source === source),
-          );
+          });
+
+        // Mods installed from a file on disk can't be downloaded, so they're counted and skipped
+        const localMods = mods.filter((mod) => mod.source === LOCAL_SOURCE);
+
+        mods = mods.filter((mod) =>
+          integrations.some(({ source }) => mod.source === source),
+        );
 
         const modsFound = mods.length;
 
@@ -636,7 +712,11 @@ const init = (context: IExtensionContext) => {
             shouldInstall ? " and install" : ""
           }, ${
             modsToChangeState.length
-          } enabled or disabled to match the backup`,
+          } enabled or disabled to match the backup${
+            localMods.length > 0
+              ? `. ${localMods.length} mods installed from a file on disk were skipped, because they can't be downloaded`
+              : ""
+          }`,
         });
       })
       .catch((error) =>

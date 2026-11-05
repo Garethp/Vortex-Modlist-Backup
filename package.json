@@ -1,6 +1,6 @@
 {
   "name": "modlist-backup",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "An extension to backup and restore mods",
   "main": "./dist/index.js",
   "repository": "",

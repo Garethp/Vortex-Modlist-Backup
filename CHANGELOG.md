@@ -1,5 +1,9 @@
 ## Changelog
 
+#### Version 0.5.3
+ * Backups now include mods installed from a file on disk (no Nexus mod or file ID), so the backup lists the same mods as the Mods page. They're marked `"source": "local"`, and Restore skips them and says how many it skipped
+ * Each mod in a backup now lists its plugin files (`.esm`, `.esp`, `.esl`) under `plugins`. Mods with no plugins, like SFSE or DLL mods, have an empty list
+
 #### Version 0.5.2
  * Backing up a profile's load order now saves the order the game really uses. Starfield's "Rules-based (Classic)" method keeps its order on the Plugins page, but 0.5.1 always saved the Load Order page's list, which stops changing when you switch to Classic, so the backup was out of date. The Classic order is saved as vortex-<game>-<profile>-loadorder-classic-backup-<timestamp>.json, and the notification says which page the order came from
  * Games that only use the Plugins page (like Skyrim) now get a load order backup too, instead of a warning
