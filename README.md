@@ -40,8 +40,14 @@ Restore Modlist doesn't restore the load order. To restore both:
  1. Use **Restore Modlist** with the modlist file, and wait for all the mods to download and install
  2. Open the `Load Order` page, click `Import`, and choose the load order file
 
-Games that don't use Vortex's `Load Order` page don't have a load order to back up. The modlist is still saved, and
-you'll get a warning instead.
+If the game uses Vortex's `Plugins` page instead (for Starfield, the "Rules-based (Classic)" load order method in
+Starfield Settings), the second file is that page's order, which is what Vortex writes to plugins.txt. It has
+`loadorder-classic` in its name, like `vortex-starfield-Default-loadorder-classic-backup-20261104-213039.json`. The
+`Load Order` page can't import it; it's a record of the order, so use it to put plugins back in order by hand or with
+rules. Starfield remembers both lists, and the one you aren't using stays as it was when you switched, so the extension
+checks which method the profile uses and saves that one.
+
+Games with neither page have no load order to back up. The modlist is still saved, and you'll get a warning instead.
 
 #### Does it backup Mod Configs, Dependencies Etc.
 No, only the list of mods and, for a profile, its load order.

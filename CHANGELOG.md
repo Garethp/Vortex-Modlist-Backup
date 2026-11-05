@@ -1,5 +1,9 @@
 ## Changelog
 
+#### Version 0.5.2
+ * Backing up a profile's load order now saves the order the game really uses. Starfield's "Rules-based (Classic)" method keeps its order on the Plugins page, but 0.5.1 always saved the Load Order page's list, which stops changing when you switch to Classic, so the backup was out of date. The Classic order is saved as vortex-<game>-<profile>-loadorder-classic-backup-<timestamp>.json, and the notification says which page the order came from
+ * Games that only use the Plugins page (like Skyrim) now get a load order backup too, instead of a warning
+
 #### Version 0.5.1
  * Renamed to "Modlist and Load Order Backup", and the toolbar buttons are now Restore Modlist, Back Up Modlist (All Games), Back Up Modlist (This Game) and Back Up Modlist and Load Order (This Profile)
  * Backing up "Only This Profile" also saves the profile's load order to a second file next to the modlist, like vortex-starfield-Default-loadorder-backup-20261026-212500.json. It's the same format as the Export button on Vortex's Load Order page, so you can restore it with that page's Import button

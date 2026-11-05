@@ -146,16 +146,86 @@ const defaultBackupFileName = (
   return `vortex-${scope}-modlist-backup-${fileNameTimestamp()}.json`;
 };
 
+// Where the active profile's load order lives:
+//  - "classic": the Plugins page (Vortex's plugin management, the rules-based method)
+//  - "dnd": the Load Order page (drag and drop)
+// A game that offers both records the choice per profile in settings.<game>.loadOrderManagementType, as
+// "gamebryo" (Classic) or "dnd" (Starfield's extension does this, and its default is "dnd"). For other games, use the
+// Load Order page's list if there is one, otherwise the Plugins page's
+type LoadOrderSource = "classic" | "dnd";
+
+const loadOrderSource = (state: IState, profile: Profile): LoadOrderSource => {
+  const managementType = getSafe(
+    state,
+    ["settings", profile.gameId, "loadOrderManagementType", profile.id],
+    undefined,
+  );
+  if (managementType === "gamebryo") return "classic";
+  if (managementType !== undefined) return "dnd";
+
+  const dndLoadOrder = getSafe(
+    state,
+    ["persistent", "loadOrder", profile.id],
+    undefined,
+  );
+  if (Array.isArray(dndLoadOrder) && dndLoadOrder.length > 0) return "dnd";
+
+  const classic = getSafe(state, ["loadOrder"], undefined);
+  return classic !== undefined && Object.keys(classic).length > 0
+    ? "classic"
+    : "dnd";
+};
+
+interface LoadOrderEntry {
+  enabled: boolean;
+  id: string;
+  name: string;
+}
+
+// The Plugins page's load order for the active profile, in load order. Vortex's plugin management keeps it in
+// state.loadOrder, keyed by lower case plugin name: { name, enabled, loadOrder }. That can still list plugins that
+// are no longer installed, so when Vortex has a list of the plugins it found, keep only those (like plugins.txt)
+const classicLoadOrder = (state: IState): LoadOrderEntry[] => {
+  const loadOrder: Record<
+    string,
+    { name?: string; enabled?: boolean; loadOrder?: number }
+  > = getSafe(state, ["loadOrder"], {});
+  const installed: Record<string, unknown> = getSafe(
+    state,
+    ["session", "plugins", "pluginList"],
+    {},
+  );
+  const installedIds = new Set(
+    Object.keys(installed).map((id) => id.toLowerCase()),
+  );
+
+  return Object.keys(loadOrder)
+    .filter((id) => installedIds.size === 0 || installedIds.has(id))
+    .map((id) => ({ id, entry: loadOrder[id] }))
+    .sort((a, b) => (a.entry.loadOrder ?? -1) - (b.entry.loadOrder ?? -1))
+    .map(({ id, entry }) => ({
+      enabled: entry.enabled === true,
+      id,
+      name: entry.name ?? id,
+    }));
+};
+
 // The load order backup goes next to the modlist backup, with "modlist" swapped for "loadorder" in the name:
 //    vortex-starfield-Default-modlist-backup-<timestamp>.json -> vortex-starfield-Default-loadorder-backup-<timestamp>.json
-// If the user picked a name without "modlist-backup" in it, add "-loadorder" to the end instead
-const loadOrderFileName = (backupPath: string): string => {
+// A Plugins page (Classic) load order gets "loadorder-classic" instead, because the Load Order page can't import it:
+//    vortex-starfield-Default-loadorder-classic-backup-<timestamp>.json
+// If the user picked a name without "modlist-backup" in it, add "-loadorder" (or "-loadorder-classic") to the end
+const loadOrderFileName = (
+  backupPath: string,
+  source: LoadOrderSource = "dnd",
+): string => {
   const dir = path.dirname(backupPath);
   const ext = path.extname(backupPath);
   const base = path.basename(backupPath, ext);
+  const kind = source === "classic" ? "loadorder-classic" : "loadorder";
   const name = /modlist-backup/i.test(base)
-    ? base.replace(/modlist-backup/i, "loadorder-backup")
-    : `${base}-loadorder`;
+    ? base.replace(/modlist-backup/i, `${kind}-backup`)
+    : `${base}-${kind}`;
   return path.join(dir, `${name}${ext || ".json"}`);
 };
 
@@ -205,16 +275,20 @@ const init = (context: IExtensionContext) => {
     {},
   );
 
-  // Save the active profile's load order next to its modlist backup. This is the same data, in the same format, as
-  // the Export button on Vortex's Load Order page, so the file can be restored with that page's Import button.
-  // Games that use their own plugin list instead of Vortex's load order page don't have one, so we say so instead
+  // Save the active profile's load order next to its modlist backup. Vortex keeps a load order in one of two places:
+  //  - the Load Order page (drag and drop, "dnd"): persistent.loadOrder[profile]. We save exactly what that page's
+  //    Export button saves, so the file can be restored with its Import button
+  //  - the Plugins page (rules-based, "Classic"): the loadOrder state of Vortex's plugin management, which is what
+  //    Vortex writes to plugins.txt. We save it in the same shape, in load order, with "-classic" in the file name
+  // Starfield lets each profile pick either one, and the other one is left as it was when the user switched, so
+  // reading the wrong one gives an old load order. See loadOrderSource
   const backupLoadOrder = (state: IState, backupPath: string) => {
     const profile = activeProfile(state);
-    const loadOrder = getSafe(
-      state,
-      ["persistent", "loadOrder", profile.id],
-      undefined,
-    );
+    const source = loadOrderSource(state, profile);
+    const loadOrder =
+      source === "classic"
+        ? classicLoadOrder(state)
+        : getSafe(state, ["persistent", "loadOrder", profile.id], undefined);
 
     if (!Array.isArray(loadOrder) || loadOrder.length === 0) {
       api.sendNotification({
@@ -225,7 +299,7 @@ const init = (context: IExtensionContext) => {
       return;
     }
 
-    const loadOrderPath = loadOrderFileName(backupPath);
+    const loadOrderPath = loadOrderFileName(backupPath, source);
 
     // Like the modlist, don't overwrite a file that isn't a load order backup
     if (fs.existsSync(loadOrderPath)) {
@@ -261,7 +335,9 @@ const init = (context: IExtensionContext) => {
         api.sendNotification({
           type: "success",
           title: "Backup Complete",
-          message: `Modlist backed up to ${backupPath} and load order (${loadOrder.length} plugins) backed up to ${loadOrderPath}`,
+          message: `Modlist backed up to ${backupPath} and load order (${loadOrder.length} plugins, from the ${
+            source === "classic" ? "Plugins page" : "Load Order page"
+          }) backed up to ${loadOrderPath}`,
         });
       },
     );
