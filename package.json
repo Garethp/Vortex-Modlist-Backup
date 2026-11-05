@@ -4,6 +4,7 @@
   "description": "An extension to backup and restore mods",
   "main": "./dist/index.js",
   "repository": "",
+  "license": "MIT",
   "scripts": {
     "bundle7z": "7z a -t7z modlist-backup.7z ./dist/index.js ./dist/info.json",
     "build": "yarn webpack && yarn extractInfo",
