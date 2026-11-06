@@ -1,5 +1,8 @@
 ## Changelog
 
+#### Version 0.5.4
+ * Each mod in a backup now records `version` (the version Vortex shows) and `archive` (the file it was last installed from). Vortex keeps a mod's folder name (`vortexId`) and its old Nexus file ID when you install a newer archive over it, so before this a backup could show an old version for a mod you'd already updated. Both fields are for information only; Restore doesn't use them
+
 #### Version 0.5.3
  * Backups now include mods installed from a file on disk (no Nexus mod or file ID), so the backup lists the same mods as the Mods page. They're marked `"source": "local"`, and Restore skips them and says how many it skipped
  * Each mod in a backup now lists its plugin files (`.esm`, `.esp`, `.esl`) under `plugins`. Mods with no plugins, like SFSE or DLL mods, have an empty list

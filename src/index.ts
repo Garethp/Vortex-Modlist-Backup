@@ -28,6 +28,12 @@ export interface Mod {
   // from, and which mods (like SFSE or DLL mods) have none. Older backups don't have this, and it's left out when
   // the mod's folder can't be read
   plugins?: string[];
+  // The version Vortex shows for the mod, and the archive it was last installed from. vortexId is the mod's folder
+  // name, set at the first install, and Vortex keeps it (and the old fileId) when a newer archive is installed over
+  // the mod, so these are the only fields that show what's really installed. Informational only: Restore doesn't
+  // use them. Older backups don't have them, and each is left out when Vortex doesn't know it
+  version?: string;
+  archive?: string;
 }
 
 // Mods installed from a file on disk rather than downloaded have no modId or fileId, so they can't be downloaded
@@ -125,6 +131,7 @@ const transformModFormat = (
   gameId: string,
   profile: Profile,
   stagingPath?: string,
+  downloads?: Record<string, { localPath?: string }>,
 ): Mod => {
   const attributes = mod.attributes || {};
   const downloadable = !!(attributes.modId && attributes.fileId);
@@ -146,6 +153,16 @@ const transformModFormat = (
     vortexId: mod.id,
     installedGame: gameId,
   };
+
+  // The archive: the download the mod was last installed from (archiveId changes with every install), falling back
+  // to the mod's own record of its file name once that download has been removed from the Downloads list
+  const version = attributes.version;
+  if (typeof version === "string" && version.trim() !== "") result.version = version.trim();
+  const archiveId = (mod as any).archiveId;
+  const archive =
+    (archiveId !== undefined ? downloads?.[archiveId]?.localPath : undefined) ??
+    attributes.fileName;
+  if (typeof archive === "string" && archive !== "") result.archive = path.basename(archive);
 
   if (stagingPath !== undefined && mod.installationPath) {
     const plugins = modPlugins(path.join(stagingPath, mod.installationPath));
@@ -177,8 +194,9 @@ const getInstalledMods = (state: IState, withPlugins = false): Mod[] =>
       const stagingPath = withPlugins
         ? stagingPathForGame(state, gameId)
         : undefined;
+      const downloads = getSafe(state, ["persistent", "downloads", "files"], {});
       return Object.values(game).map((mod) =>
-        transformModFormat(mod, gameId, profile, stagingPath),
+        transformModFormat(mod, gameId, profile, stagingPath, downloads),
       );
     })
     .reduce((result, current) => result.concat(current), []);

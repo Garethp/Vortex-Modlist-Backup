@@ -61,6 +61,11 @@ yourself.
 Each mod in the backup also lists its plugin files (`.esm`, `.esp`, `.esl`) under `plugins`, so you can tell which mod
 a plugin came from. Mods with no plugins, like SFSE or DLL mods, have an empty list.
 
+Each mod also records `version` (the version Vortex shows) and `archive` (the file it was last installed from). Use
+these, not `vortexId`, to see what's installed: when you install a newer archive over a mod, Vortex keeps the mod's
+folder name (`vortexId`) and its old Nexus file ID, so those still point at the first version. Restore downloads by
+file ID, so after such an update it fetches the older file; reinstall the newer one by hand afterwards.
+
 #### Are there any requirements
 You need to be a premium member on the Nexus site to Restore the list, since the Vortex client won't let you 
 download the mods automatically unless you're a premium member, since you need to see the ads.
