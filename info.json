@@ -1,6 +1,6 @@
 {
-  "name": "Modlist Backup",
-  "author": ["Garethp"],
-  "version": "0.4.1",
+  "name": "Modlist and Load Order Backup",
+  "author": "Garethp",
+  "version": "0.5.4",
   "description": "An extension to backup and restore mods"
 }
